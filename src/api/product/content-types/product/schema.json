@@ -1,0 +1,75 @@
+{
+  "kind": "collectionType",
+  "collectionName": "products",
+  "info": {
+    "singularName": "product",
+    "pluralName": "products",
+    "displayName": "product",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "productName": {
+      "type": "string"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "Engine Components",
+        "Electrical Parts",
+        "Suspension and Steering Components",
+        "Braking System Parts",
+        "Exhaust and Emission Parts",
+        "Fuel System Parts",
+        "Cooling System Components",
+        "Transmission and Drivetrain Parts",
+        "Body and Exterior Parts",
+        "Accessories and Customization",
+        "Lubricants and Fluids",
+        "Tires and Wheels",
+        "Tools and Equipment",
+        "Motorcycle-Specific Parts"
+      ]
+    },
+    "brand": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "integer",
+      "default": 0
+    },
+    "Price": {
+      "type": "decimal"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "sales_records": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::sales-record.sales-record",
+      "mappedBy": "products"
+    },
+    "sales_by_stores": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::sales-by-store.sales-by-store",
+      "mappedBy": "products"
+    },
+    "sales_history_by_stores": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::sales-history-by-store.sales-history-by-store",
+      "mappedBy": "products"
+    }
+  }
+}

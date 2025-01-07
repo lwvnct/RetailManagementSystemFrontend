@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sales_history_by_stores",
+  "info": {
+    "singularName": "sales-history-by-store",
+    "pluralName": "sales-history-by-stores",
+    "displayName": "Sales History by Store ",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "quantity": {
+      "type": "integer"
+    },
+    "totalPrice": {
+      "type": "decimal"
+    },
+    "users_permissions_users": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "sales_history_by_stores"
+    },
+    "products": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::product.product",
+      "inversedBy": "sales_history_by_stores"
+    }
+  }
+}

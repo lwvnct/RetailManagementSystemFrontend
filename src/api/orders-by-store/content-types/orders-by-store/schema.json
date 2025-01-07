@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "orders_by_stores",
+  "info": {
+    "singularName": "orders-by-store",
+    "pluralName": "orders-by-stores",
+    "displayName": "NULL",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "ordered_item": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::ordered-item.ordered-item"
+    },
+    "contactNumber1": {
+      "type": "string"
+    }
+  }
+}

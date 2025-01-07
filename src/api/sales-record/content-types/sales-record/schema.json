@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sales_records",
+  "info": {
+    "singularName": "sales-record",
+    "pluralName": "sales-records",
+    "displayName": "salesRecord",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "users_permissions_users": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "sales_records"
+    },
+    "products": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::product.product",
+      "inversedBy": "sales_records"
+    },
+    "quantity": {
+      "type": "integer"
+    },
+    "totalPrice": {
+      "type": "decimal"
+    }
+  }
+}
