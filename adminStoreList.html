@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Retailer System</title>
+        <!-- Required meta tags -->
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, shrink-to-fit=no"
+        />
+
+        <!-- Bootstrap CSS v5.3.2 -->
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+            integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+            crossorigin="anonymous"
+        />
+    </head>
+
+    <body>
+        <!-- Header with Logout Button in Upper Right -->
+        <header class="bg-dark text-white p-3">
+            <div class="container">
+                <div class="row">
+                    <div class="col-6">
+                        <h1>STORE ORDERS</h1>
+                    </div>
+                    <div class="col-6 text-end">
+                        <span class="pe-5"><a href="productStocts.html">View Inventory</a></span>
+                        <span class="pe-5"><a href="Branches.html">View Branches</a></span>
+                        <span class="pe-5"><a href="Sales.html">View Sales</a></span>
+                        <button id="logoutButton" class="btn btn-danger">Log Out</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <div class="container mt-5">
+            <div class="row" id="user-cards-container">
+                <!-- User cards will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <script>
+            const apiUrl = 'http://localhost:1337/api/ordered-items?populate=*';
+            const salesRecordAPI = 'http://localhost:1337/api/sales-records?populate=*';
+            const salesByStoreAPI = 'http://localhost:1337/api/sales-by-stores';
+            const productsAPI = 'http://localhost:1337/api/products';
+            const authToken = localStorage.getItem('authToken'); // Retrieve the token from localStorage
+
+            // Function to fetch the data from the API and render the user cards
+            function loadUserCards() {
+                fetch(apiUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`, // Add the Bearer token
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const userCardsContainer = document.getElementById('user-cards-container');
+                    userCardsContainer.innerHTML = ''; // Clear previous cards
+
+                    const processedItems = JSON.parse(localStorage.getItem('processedItems')) || [];
+
+                    data.data.forEach(item => {
+                        const { documentId, totalPrice, quantity, users_permissions_user, products } = item;
+                        const { username, email } = users_permissions_user;
+                        const productNames = products.map(p => p.productName).join(', ');
+
+                        // If this item is processed, skip rendering it
+                        if (processedItems.includes(documentId)) {
+                            return;
+                        }
+
+                        const card = `
+                            <div class="col-md-4 mb-3 card-container" data-id="${documentId}">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">${username}</h5>
+                                        <p class="card-text">Email: ${email}</p>
+                                        <p class="card-text">Products: ${productNames}</p>
+                                        <p class="card-text">Total Price: ${totalPrice} Php</p>
+                                        <p class="card-text">Quantity: ${quantity}</p>
+                                        <button class="btn btn-dark process-btn" data-id="${documentId}" data-user-id="${users_permissions_user.id}" data-products='${JSON.stringify(products)}' data-quantity="${quantity}" data-total-price="${totalPrice}">Processed</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        userCardsContainer.innerHTML += card;
+                    });
+
+                    // Add event listeners for "Processed" buttons
+                    document.querySelectorAll('.process-btn').forEach(button => {
+                        button.addEventListener('click', () => {
+                            const orderedItemDocumentId = button.getAttribute('data-id');
+                            const userId = button.getAttribute('data-user-id');
+                            const products = JSON.parse(button.getAttribute('data-products'));
+                            const quantity = button.getAttribute('data-quantity');
+                            const totalPrice = button.getAttribute('data-total-price');
+
+                            // Add the processed item to localStorage
+                            const processedItems = JSON.parse(localStorage.getItem('processedItems')) || [];
+                            if (!processedItems.includes(orderedItemDocumentId)) {
+                                processedItems.push(orderedItemDocumentId);
+                                localStorage.setItem('processedItems', JSON.stringify(processedItems));
+                            }
+
+                            // Prepare the sales record data
+                            const salesRecordData = {
+                                data: {
+                                    users_permissions_users: [userId],  // User ID as an array
+                                    products: products.map(product => product.id),  // Product IDs as an array
+                                    quantity: parseInt(quantity),  // Quantity of the items
+                                    totalPrice: parseFloat(totalPrice),  // Total price of the items
+                                }
+                            };
+
+                            // Send the sales record data to the Sales Record API
+                            fetch(salesRecordAPI, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    Authorization: `Bearer ${authToken}`, // Add the Bearer token
+                                },
+                                body: JSON.stringify(salesRecordData),
+                            })
+                            .then(response => {
+                                if (response.ok) {
+                                    alert('Item processed successfully!');
+
+                                    // Send the same data to the Sales by Store API
+                                    fetch(salesByStoreAPI, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            Authorization: `Bearer ${authToken}`,
+                                        },
+                                        body: JSON.stringify(salesRecordData),
+                                    })
+                                    .then(storeResponse => {
+                                        if (storeResponse.ok) {
+                                            console.log('Item added to Sales by Store API.');
+                                        } else {
+                                            throw new Error('Failed to store sales by store.');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error storing sales by store:', error);
+                                        alert('Error storing sales by store: ' + error.message);
+                                    });
+
+                                    // Update product quantities in the API
+                                    products.forEach(product => {
+                                        const productDocumentId = product.documentId; // Use documentId directly
+
+                                        fetch(`${productsAPI}/${productDocumentId}`, {
+                                            method: 'PUT',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                Authorization: `Bearer ${authToken}`,
+                                            },
+                                            body: JSON.stringify({
+                                                data: {
+                                                    quantity: parseInt(product.quantity) - parseInt(quantity),
+                                                },
+                                            }),
+                                        })
+                                        .then(updateResponse => {
+                                            if (updateResponse.ok) {
+                                                console.log(`Product ${product.productName} updated successfully.`);
+                                            } else {
+                                                throw new Error(`Failed to update product ${product.productName}.`);
+                                            }
+                                        })
+                                        .catch(error => {
+                                            console.error('Error updating product quantity:', error);
+                                            alert('Error updating product quantity: ' + error.message);
+                                        });
+                                    });
+
+                                    // Remove the item from the API
+                                    fetch(`http://localhost:1337/api/ordered-items/${orderedItemDocumentId}`, {
+                                        method: 'DELETE',
+                                        headers: {
+                                            'Authorization': `Bearer ${authToken}`,
+                                        },
+                                    })
+                                    .then(deleteResponse => {
+                                        if (deleteResponse.ok) {
+                                            console.log('Item deleted from the API');
+                                            loadUserCards(); // Reload UI
+                                        } else {
+                                            throw new Error('Failed to delete item from the API.');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error deleting item:', error);
+                                        alert('Error deleting item: ' + error.message);
+                                    });
+                                } else {
+                                    return response.json().then(err => {
+                                        throw new Error(err.message || 'Failed to process item.');
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error processing item:', error);
+                                alert('Error processing item: ' + error.message);
+                            });
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+            }
+
+            // Load user cards initially
+            loadUserCards();
+
+            // Logout functionality
+            const logoutButton = document.getElementById('logoutButton');
+            if (logoutButton) {
+                logoutButton.addEventListener('click', () => {
+                    // Remove JWT and User ID from localStorage
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userId');
+
+                    // Redirect to the landing page or login page
+                    alert('You have been logged out.');
+                    window.location.href = 'landingpage.html'; // Redirect to landing page
+                });
+            }
+        </script>
+
+        <!-- Bootstrap JavaScript Libraries -->
+        <script
+            src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+            integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+            crossorigin="anonymous"
+        ></script>
+
+        <script
+            src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"
+            integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
+            crossorigin="anonymous"
+        ></script>
+    </body>
+</html>

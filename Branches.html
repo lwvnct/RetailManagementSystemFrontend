@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Records</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-2 d-flex justify-content-between align-items-center bg-dark">
+        <h1 class="text-white">Branches</h1>
+        <a href="ViewSalesHistoryByStore.html">View Sales History By Store</a>
+        
+    </div>
+    <div class="container mt-2">
+        <ul class="list-group" id="userList">
+            <!-- User list dynamically populated here -->
+        </ul>
+    </div>
+    <!-- Modal -->
+    <div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productModalLabel">User Products</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="list-group" id="productList">
+                        <!-- Product details dynamically populated here -->
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const apiUrl = "http://localhost:1337/api/sales-records?populate=*";
+            const userList = document.getElementById("userList");
+            const productList = document.getElementById("productList");
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    const users = {};
+
+                    // Organize data by users
+                    data.data.forEach(record => {
+                        const user = record.users_permissions_users[0];
+                        if (!users[user.id]) {
+                            users[user.id] = {
+                                username: user.username,
+                                products: []
+                            };
+                        }
+
+                        record.products.forEach(product => {
+                            users[user.id].products.push({
+                                productName: product.productName,
+                                quantity: record.quantity,
+                                price: product.Price
+                            });
+                        });
+                    });
+
+                    // Populate the user list
+                    Object.values(users).forEach(user => {
+                        const listItem = document.createElement("li");
+                        listItem.classList.add("list-group-item");
+                        listItem.textContent = user.username;
+                        listItem.style.cursor = "pointer";
+                        listItem.addEventListener("click", () => {
+                            showProducts(user.products);
+                        });
+                        userList.appendChild(listItem);
+                    });
+                })
+                .catch(error => console.error("Error fetching data:", error));
+
+            // Display products in the modal
+            function showProducts(products) {
+                productList.innerHTML = "";
+                products.forEach(product => {
+                    const productItem = document.createElement("li");
+                    productItem.classList.add("list-group-item");
+                    productItem.textContent = `Product: ${product.productName}, Quantity: ${product.quantity}, Price: ${product.price}`;
+                    productList.appendChild(productItem);
+                });
+
+                const modal = new bootstrap.Modal(document.getElementById("productModal"));
+                modal.show();
+            }
+        });
+    </script>
+</body>
+</html>

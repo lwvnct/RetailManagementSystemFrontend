@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Inventory</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container my-5">
+        <h1 class="mb-4 text-center bg-dark text-white py-2">Product Inventory</h1>
+        <ul class="list-group" id="productList">
+            <!-- Product details dynamically populated here -->
+        </ul>
+
+        <!-- Sales History Section -->
+        <h5 class="mt-3">Save to sales history</h5>
+        <div id="salesHistory" class="list-group">
+            <!-- Sales history items will be populated here -->
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const apiUrl = "http://localhost:1337/api/sales-by-stores?populate=*";
+            const productsApiUrl = "http://localhost:1337/api/products?populate=*";
+            const salesHistoryApiUrl = "http://localhost:1337/api/sales-history-by-stores?populate=*"; // Ensure this is defined here
+            const productList = document.getElementById("productList");
+            const salesHistory = document.getElementById("salesHistory");
+
+            // Simulate fetching logged-in user's ID (replace this with actual logic)
+            const loggedInUserId = localStorage.getItem("userId");
+
+            if (!loggedInUserId) {
+                alert("You must be logged in to view your sales records.");
+                return;
+            }
+
+            // Fetch sales records for the logged-in user
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(salesData => {
+                    const userProducts = [];
+
+                    // Filter sales data for the logged-in user
+                    salesData.data.forEach(record => {
+                        const user = record.users_permissions_users[0];
+                        if (user.id === parseInt(loggedInUserId, 10)) {
+                            record.products.forEach(product => {
+                                userProducts.push({
+                                    productId: product.id,
+                                    productName: product.productName,
+                                    quantity: record.quantity,
+                                    price: product.Price,
+                                    documentId: record.documentId // Store documentId for API updates
+                                });
+                            });
+                        }
+                    });
+
+                    // Fetch product images
+                    fetch(productsApiUrl)
+                        .then(response => response.json())
+                        .then(productData => {
+                            const productImages = productData.data.reduce((map, product) => {
+                                const imageUrl = product.image?.formats?.thumbnail?.url || product.image?.url || '';
+                                map[product.id] = imageUrl ? `http://localhost:1337${imageUrl}` : '';
+                                return map;
+                            }, {});
+
+                            // Populate the product list
+                            if (userProducts.length === 0) {
+                                productList.innerHTML = `
+                                    <li class="list-group-item text-center">
+                                        No sales records found.
+                                    </li>`;
+                                return;
+                            }
+
+                            userProducts.forEach(product => {
+                                const imageSrc = productImages[product.productId] || "https://via.placeholder.com/80";
+                                const productItem = `
+                                    <li class="list-group-item d-flex align-items-center">
+                                        <img src="${imageSrc}" alt="${product.productName}" class="rounded me-4" style="width: 80px; height: 80px; object-fit: cover;">
+                                        <div class="d-flex flex-wrap w-100">
+                                            <div class="me-5"><strong>Product:</strong> ${product.productName}</div>
+                                            <div class="me-5"><strong>Quantity:</strong> ${product.quantity}</div>
+                                            <div><strong>Price:</strong> ${product.price} Php</div>
+                                        </div>
+                                        <div class="d-flex align-items-center ms-auto">
+                                            <button class="btn btn-outline-secondary btn-sm me-3" onclick="updateQuantity(this, -1)">-</button>
+                                            <input type="number" class="form-control form-control-sm text-center me-3" style="width: 60px;" value="0" min="0">
+                                            <button class="btn btn-outline-secondary btn-sm me-5" onclick="updateQuantity(this, 1)">+</button>
+                                            <button class="btn btn-primary btn-md me-2" onclick="markAsSold(${product.productId}, '${product.documentId}', '${product.productName}', ${product.price}, this)">Sold</button>
+                                        </div>
+                                    </li>`;
+                                productList.insertAdjacentHTML("beforeend", productItem);
+                            });
+                        })
+                        .catch(error => console.error("Error fetching product images:", error));
+                })
+                .catch(error => console.error("Error fetching sales data:", error));
+
+            // Declare the markAsSold function within this scope
+            window.markAsSold = function (productId, documentId, productName, price, button) {
+                const inputField = button.parentNode.querySelector("input[type='number']");
+                const quantitySold = parseInt(inputField.value, 10);
+
+                if (isNaN(quantitySold) || quantitySold <= 0) {
+                    alert("Please enter a valid quantity.");
+                    return;
+                }
+
+                // Get the current quantity of the product from the API
+                fetch(`http://localhost:1337/api/sales-by-stores/${documentId}`)
+                    .then(response => response.json())
+                    .then(salesData => {
+                        const currentQuantity = salesData.data.quantity;
+
+                        if (quantitySold > currentQuantity) {
+                            alert("Not enough stock to mark as sold.");
+                            return;
+                        }
+
+                        const newQuantity = currentQuantity - quantitySold;
+
+                        // Update the quantity in the API
+                        fetch(`http://localhost:1337/api/sales-by-stores/${documentId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                data: {
+                                    quantity: newQuantity
+                                }
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(() => {
+                            const totalPrice = quantitySold * price;
+                            addSaleToHistory(productName, quantitySold, totalPrice);
+
+                            // Save the sale to the sales history API
+                            fetch(salesHistoryApiUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    data: {
+                                        users_permissions_users: [parseInt(loggedInUserId)],
+                                        products: [productId],
+                                        quantity: quantitySold,
+                                        totalPrice: totalPrice
+                                    }
+                                })
+                            })
+                            .then(() => {
+                                alert(`Product ${productName} marked as sold! New quantity: ${newQuantity}`);
+                            })
+                            .catch(error => console.error("Error saving sales history:", error));
+                        })
+                        .catch(error => console.error("Error updating quantity:", error));
+                    })
+                    .catch(error => console.error("Error fetching current sales data:", error));
+            };
+
+            // Function to update sales history
+            function addSaleToHistory(productName, quantitySold, totalPrice) {
+                const saleItem = `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        ${productName} | Quantity Sold: ${quantitySold} | Total Price: ${totalPrice} Php
+                    </li>`;
+                salesHistory.insertAdjacentHTML("beforeend", saleItem);
+            }
+        });
+
+        function updateQuantity(button, change) {
+            const inputField = button.parentNode.querySelector("input[type='number']");
+            let currentValue = parseInt(inputField.value, 10);
+            currentValue = isNaN(currentValue) ? 0 : currentValue;
+            inputField.value = Math.max(0, currentValue + change);
+        }
+    </script>
+</body>
+</html>

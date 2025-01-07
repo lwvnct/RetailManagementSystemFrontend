@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Records</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .record-container {
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 1000px;
+        }
+        .record {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            font-size: 16px;
+        }
+        .record:last-child {
+            border-bottom: none;
+        }
+        .record-info {
+            display: flex;
+            flex-direction: column; /* Change to column to align vertically */
+            justify-content: flex-start;
+            width: 100%;
+        }
+        .record-info span {
+            margin-bottom: 10px; /* Adds space between the spans */
+        }
+        .no-records {
+            text-align: center;
+            font-size: 18px;
+            color: #888;
+        }
+        .total-price {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="">Sales Records</h1>
+
+    <div class="record-container" id="sales-records">
+        <!-- Sales records will be displayed here -->
+        <p class="no-records">Loading sales records...</p>
+    </div>
+
+    <div class="total-price" id="total-price">
+        <!-- Total price will be displayed here -->
+    </div>
+
+    <script>
+        // Function to fetch and display sales records
+        async function fetchSalesRecords() {
+            try {
+                const response = await fetch('http://localhost:1337/api/sales-records?populate=*', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch sales records.');
+                }
+
+                const data = await response.json();
+                displaySalesRecords(data);
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        // Function to display sales records on the page
+        function displaySalesRecords(data) {
+            const container = document.getElementById('sales-records');
+            const totalPriceContainer = document.getElementById('total-price');
+            container.innerHTML = ''; // Clear any previous content
+            let totalPriceSum = 0;
+
+            // Check if the API returns sales records
+            if (data && data.data && data.data.length > 0) {
+                data.data.forEach(record => {
+                    const recordElement = document.createElement('div');
+                    recordElement.className = 'record';
+
+                    // Extract username, productName, quantity, and totalPrice
+                    const username = record.users_permissions_users && record.users_permissions_users[0].username;
+                    const product = record.products && record.products[0]; // Assuming 1 product per sale record
+                    const productName = product ? product.productName : 'Unknown Product';
+                    const quantity = record.quantity || 0;
+                    const totalPrice = record.totalPrice || 0;
+
+                    // Add totalPrice to the sum
+                    totalPriceSum += totalPrice;
+
+                    recordElement.innerHTML = `
+                        <div class="record-info">
+                            <span><strong>Branch:</strong> ${username}</span>
+                            <span><strong>Product:</strong> ${productName}</span>
+                            <span><strong>Quantity:</strong> ${quantity}</span>
+                            <span><strong>Total:</strong> ${totalPrice} Php</span>
+                        </div>
+                    `;
+                    container.appendChild(recordElement);
+                });
+
+                // Display the total price sum
+                totalPriceContainer.innerHTML = `<strong>Total Sales Amount: ${totalPriceSum} Php</strong>`;
+            } else {
+                container.innerHTML = '<p class="no-records">No sales records found.</p>';
+                totalPriceContainer.innerHTML = '';
+            }
+        }
+
+        // Call the function to fetch and display sales records when the page loads
+        fetchSalesRecords();
+    </script>
+</body>
+</html>
