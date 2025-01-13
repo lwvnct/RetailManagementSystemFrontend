@@ -22,10 +22,13 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+
+        // Ensure the DOM(Document Object Model) is fully loaded before running the script
         document.addEventListener("DOMContentLoaded", () => {
+            // Define the API URLs and DOM elements
             const apiUrl = "http://localhost:1337/api/sales-by-stores?populate=*";
             const productsApiUrl = "http://localhost:1337/api/products?populate=*";
-            const salesHistoryApiUrl = "http://localhost:1337/api/sales-history-by-stores?populate=*"; // Ensure this is defined here
+            const salesHistoryApiUrl = "http://localhost:1337/api/sales-history-by-stores?populate=*"; 
             const productList = document.getElementById("productList");
             const salesHistory = document.getElementById("salesHistory");
 
@@ -41,19 +44,20 @@
             fetch(apiUrl)
                 .then(response => response.json())
                 .then(salesData => {
+                    //store the filtered sales records for the logged-in user.
                     const userProducts = [];
 
                     // Filter sales data for the logged-in user
                     salesData.data.forEach(record => {
                         const user = record.users_permissions_users[0];
-                        if (user.id === parseInt(loggedInUserId, 10)) {
+                        if (user.id === parseInt(loggedInUserId)) {
                             record.products.forEach(product => {
                                 userProducts.push({
                                     productId: product.id,
                                     productName: product.productName,
                                     quantity: record.quantity,
                                     price: product.Price,
-                                    documentId: record.documentId // Store documentId for API updates
+                                    documentId: record.documentId 
                                 });
                             });
                         }
@@ -73,12 +77,14 @@
                             if (userProducts.length === 0) {
                                 productList.innerHTML = `
                                     <li class="list-group-item text-center">
-                                        No sales records found.
+                                        No Inventory Products found.
                                     </li>`;
                                 return;
                             }
 
+                            // Display the product list
                             userProducts.forEach(product => {
+                                //If the product has no image, use a placeholder image
                                 const imageSrc = productImages[product.productId] || "https://via.placeholder.com/80";
                                 const productItem = `
                                     <li class="list-group-item d-flex align-items-center">
@@ -88,6 +94,8 @@
                                             <div class="me-5"><strong>Quantity:</strong> ${product.quantity}</div>
                                             <div><strong>Price:</strong> ${product.price} Php</div>
                                         </div>
+                                        
+                                        
                                         <div class="d-flex align-items-center ms-auto">
                                             <button class="btn btn-outline-secondary btn-sm me-3" onclick="updateQuantity(this, -1)">-</button>
                                             <input type="number" class="form-control form-control-sm text-center me-3" style="width: 60px;" value="0" min="0">
@@ -95,6 +103,7 @@
                                             <button class="btn btn-primary btn-md me-2" onclick="markAsSold(${product.productId}, '${product.documentId}', '${product.productName}', ${product.price}, this)">Sold</button>
                                         </div>
                                     </li>`;
+                                // Append the product item to the list
                                 productList.insertAdjacentHTML("beforeend", productItem);
                             });
                         })
@@ -102,11 +111,13 @@
                 })
                 .catch(error => console.error("Error fetching sales data:", error));
 
-            // Declare the markAsSold function within this scope
+
+            // This function marks a product as sold and updates the quantity
             window.markAsSold = function (productId, documentId, productName, price, button) {
                 const inputField = button.parentNode.querySelector("input[type='number']");
-                const quantitySold = parseInt(inputField.value, 10);
+                const quantitySold = parseInt(inputField.value);
 
+                // Validate the quantity input
                 if (isNaN(quantitySold) || quantitySold <= 0) {
                     alert("Please enter a valid quantity.");
                     return;
@@ -123,6 +134,7 @@
                             return;
                         }
 
+                        // Calculate the new quantity after sale
                         const newQuantity = currentQuantity - quantitySold;
 
                         // Update the quantity in the API
@@ -137,8 +149,10 @@
                                 }
                             })
                         })
+                        // Update the quantity in the API
                         .then(response => response.json())
                         .then(() => {
+                            // Update the quantity in the UI
                             const totalPrice = quantitySold * price;
                             addSaleToHistory(productName, quantitySold, totalPrice);
 
@@ -177,6 +191,7 @@
             }
         });
 
+        // Function to update the quantity input field
         function updateQuantity(button, change) {
             const inputField = button.parentNode.querySelector("input[type='number']");
             let currentValue = parseInt(inputField.value, 10);

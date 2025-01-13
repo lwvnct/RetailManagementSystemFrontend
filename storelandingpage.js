@@ -1,4 +1,5 @@
 async function fetchDataAndPopulate() {
+    // Retrieve the authentication token and userId from local storage
     const authToken = localStorage.getItem('authToken');
     const userId = localStorage.getItem('userId');
 
@@ -9,17 +10,21 @@ async function fetchDataAndPopulate() {
         return;
     }
 
+    // Fetch products data
     try {
         const response = await fetch('http://localhost:1337/api/products?populate=*');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        // Parse the JSON response
+        //convert it into a structured format
         const data = await response.json();
+        // Get the products array from the data object
         const products = data.data;
-
         const container = document.getElementById('store-data-container');
-        container.innerHTML = ''; // Clear previous content
-
+        
+        // Loop through each product and display it on the page
         products.forEach(item => {
             const card = document.createElement('div');
             card.className = 'col-md-4 mb-4';
@@ -45,7 +50,7 @@ async function fetchDataAndPopulate() {
                                 style="width: 80px;" 
                                 min="1" 
                                 max="${item.quantity}" 
-                                value="1">
+                                value="0">
                             <button 
                                 class="btn btn-dark add-to-store-cart" 
                                 data-id="${item.id}">
@@ -55,8 +60,10 @@ async function fetchDataAndPopulate() {
                     </div>
                 </div>
             `;
+            //adds the product card to the store-data-container
             container.appendChild(card);
 
+            //Add to cart button event listener
             card.querySelector('.add-to-store-cart').addEventListener('click', async event => {
                 const productId = event.currentTarget.dataset.id;
                 const quantity = parseInt(document.getElementById(`quantity-${productId}`).value);

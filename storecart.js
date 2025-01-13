@@ -11,6 +11,7 @@ Promise.all([
     fetch(productsApiUrl).then(response => response.json()),
     fetch(cartsApiUrl).then(response => response.json())
 ])
+    // extract only the carts that belong to the currently logged-in user.
     .then(([productsData, cartsData]) => {
         const userCarts = cartsData.data.filter(cart => cart.users_permissions_user.id == loggedInUserId);
         displayCarts(userCarts, productsData.data);
@@ -20,13 +21,13 @@ Promise.all([
 // Function to display cart data
 function displayCarts(carts, products) {
     const cartContainer = document.getElementById("cart-container");
-    cartContainer.innerHTML = ""; // Clear existing content
 
     if (carts.length === 0) {
         cartContainer.innerHTML = "<p>No items in your cart.</p>";
         return;
     }
 
+    // Loop through each cart and display products
     carts.forEach(cart => {
         const productsHtml = cart.products.map(cartProduct => {
             const product = products.find(p => p.id === cartProduct.id);
@@ -64,10 +65,12 @@ function displayCarts(carts, products) {
             `;
         }).join("");
 
+        // Create cart HTML
         const cartHtml = `<div class="cart-item">${productsHtml}<hr></div>`;
         cartContainer.innerHTML += cartHtml;
     });
 
+    // Create total section
     const totalSection = document.createElement('div');
     totalSection.id = "total-section";
     totalSection.innerHTML = `
@@ -80,6 +83,7 @@ function displayCarts(carts, products) {
 }
 
 // Function to delete a cart item
+//called when the remove button is clicked
 function deleteCartItem(cartDocumentId) {
     const deleteUrl = `http://localhost:1337/api/carts/${cartDocumentId}`;
     fetch(deleteUrl, {
@@ -94,19 +98,21 @@ function deleteCartItem(cartDocumentId) {
 }
 
 // Function to update total amount
+//called when a checkbox is checked or unchecked
 function updateTotalAmount() {
     const checkboxes = document.querySelectorAll('.item-checkbox');
     let totalAmount = 0;
     const selectedItemsContainer = document.getElementById('selected-items-container');
     selectedItemsContainer.innerHTML = '';
 
+    // Loop through all checkboxes and calculate total amount
     checkboxes.forEach(checkbox => {
         if (checkbox.checked) {
             const productRow = checkbox.closest('.product-row');
             const productName = productRow.dataset.name;
             const quantity = productRow.dataset.quantity;
             const price = productRow.dataset.price;
-            const totalPrice = parseFloat(price) * parseInt(quantity, 10);
+            const totalPrice = parseFloat(price) * parseInt(quantity);
 
             const selectedItemHtml = `<li class="list-group-item d-flex justify-content-between align-items-center">${productName} (Qty: ${quantity}) - ${totalPrice.toFixed(2)} Php</li>`;
             selectedItemsContainer.innerHTML += selectedItemHtml;
@@ -114,31 +120,37 @@ function updateTotalAmount() {
             totalAmount += totalPrice;
         }
     });
-
+    
+    // Update total amount in the UI
     document.getElementById('total-amount').textContent = totalAmount.toFixed(2);
 }
 
 // Checkout function
+//called when the checkout button is clicked
 function checkout() {
     const checkboxes = document.querySelectorAll('.item-checkbox');
     const selectedProducts = [];
     const cartItemsToDelete = [];
 
+    // Loop through all checkboxes and get selected products
+    // Add selected products to the selectedProducts array
     checkboxes.forEach(checkbox => {
         if (checkbox.checked) {
             const productRow = checkbox.closest('.product-row');
-            const productId = parseInt(productRow.dataset.productId, 10);
-            const quantity = parseInt(productRow.dataset.quantity, 10);
+            const productId = parseInt(productRow.dataset.productId);
+            const quantity = parseInt(productRow.dataset.quantity);
             const price = parseFloat(productRow.dataset.price);
             const totalPrice = price * quantity;
             const cartDocumentId = productRow.id;
 
+            // Add selected product to the list
             selectedProducts.push({
                 products: productId,
                 quantity,
                 totalPrice
             });
 
+            // Add cart item to delete list
             cartItemsToDelete.push(cartDocumentId);
         }
     });
@@ -148,16 +160,18 @@ function checkout() {
         return;
     }
 
+    // Checkout selected products
     const checkoutPromises = selectedProducts.map(product => {
         const payload = {
             data: {
-                users_permissions_user: parseInt(loggedInUserId, 10),
+                users_permissions_user: parseInt(loggedInUserId),
                 products: product.products,
-                quantity: product.quantity,
+                quantity: product.quantity, 
                 totalPrice: product.totalPrice
             }
         };
 
+        // Create ordered item
         return fetch(orderedItemsApiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -170,7 +184,9 @@ function checkout() {
         });
     });
 
+    // Wait for all checkout promises to complete
     Promise.all(checkoutPromises)
+    // Remove checked-out items from the cart
         .then(() => {
             alert("Checkout successful!");
 
@@ -195,8 +211,4 @@ function checkout() {
         });
 }
 
-// Toggle contact information form
-function toggleContactInfo() {
-    const contactSection = document.getElementById("contact-info-section");
-    contactSection.classList.toggle("show");
-}
+

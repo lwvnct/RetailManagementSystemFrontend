@@ -11,12 +11,18 @@
     <!-- Main container for the page -->
     <div class="container mt-3">
         <h1 class="text-center mb-4 bg-dark text-white py-3">Sales History</h1>
-        <!-- List to display sales data -->
-        <ul id="salesContainer" class="list-group"></ul>
-        <!-- Container to display total sales by item -->
-        <div id="totalByItemContainer" class="mt-4"></div>
-        <!-- Container to display the total sales amount -->
-        <div id="totalSalesContainer" class="mt-4 text-center"></div>
+        
+        <ul id="salesContainer" class="list-group">
+            <!-- List to display sales data -->
+        </ul>
+        
+        <div id="totalByItemContainer" class="mt-4">
+            <!-- Container to display total sales by item -->
+        </div>
+        
+        <div id="totalSalesContainer" class="mt-4 text-center">
+            <!-- Container to display the total sales amount -->
+        </div>
     </div>
 
     <!-- Bootstrap JS Bundle with Popper for functionality -->
@@ -103,16 +109,20 @@
                     });
                 });
 
+                // Sort totalByItem by totalQuantity in descending order
+                const sortedItems = Object.entries(totalByItem).sort((a, b) => b[1].totalQuantity - a[1].totalQuantity);
+
                 // Generate HTML for the total by item summary
                 let totalByItemHTML = '<h3>Total Sales by Item:</h3><ul class="list-group">';
-                for (const [productName, totals] of Object.entries(totalByItem)) {
+                sortedItems.forEach(([productName, totals]) => {
                     totalByItemHTML += `<li class="list-group-item">
                         ${productName} -  
                         Total Quantity Sold: ${totals.totalQuantity} | 
                         Total Price: ${totals.totalPrice.toFixed(2)} Php
                     </li>`;
-                }
+                });
                 totalByItemHTML += '</ul>';
+
                 // Display the total by item summary
                 totalByItemContainer.innerHTML = totalByItemHTML;
 
