@@ -421,6 +421,9 @@ export interface ApiOrderedItemOrderedItem extends Struct.CollectionTypeSchema {
       'api::ordered-item.ordered-item'
     > &
       Schema.Attribute.Private;
+    PaymentMethod: Schema.Attribute.Enumeration<
+      ['COD(Cash on Delivery)', 'Gcash']
+    >;
     products: Schema.Attribute.Relation<'oneToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     quantity: Schema.Attribute.Integer;

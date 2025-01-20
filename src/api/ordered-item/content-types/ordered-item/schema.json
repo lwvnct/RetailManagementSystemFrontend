@@ -28,6 +28,13 @@
     },
     "totalPrice": {
       "type": "decimal"
+    },
+    "PaymentMethod": {
+      "type": "enumeration",
+      "enum": [
+        "COD(Cash on Delivery)",
+        "Gcash"
+      ]
     }
   }
 }
